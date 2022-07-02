@@ -5,4 +5,6 @@ Initially, I am going to make 2 maps:
 
 Later, data from the other ASC locations will be included.
 
-For the county coordinates & other info, I used the `.json` file from plotly's choropleth article.
+For the county coordinates & other info, I used the `.json` file from plotly's choropleth article (https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json). I got the `fips` codes from https://www.nrcs.usda.gov/wps/portal/nrcs/detail/national/home/?cid=nrcs143_013697.
+
+
