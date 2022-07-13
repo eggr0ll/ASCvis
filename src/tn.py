@@ -61,24 +61,6 @@ fig_cty_percent.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
 fig_cty_percent.show()
 
 
-def plot_map(map_name, column_color, data_type, legend_color, color_list, legend_list, rename_label_1):
-    map_name = px.choropleth(data_frame=final_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             if data_type == 'continuous':
-                                 color_continuous_scale='legend_color'
-                             elif data_type == 'discrete':
-                                 color_discrete_sequence='color_list'
-                                 category_orders={'column_color': 'legend_list'}
-                            scope='world',
-                            labels={'column_color': 'rename_label_1', 'CTYNAME': 'County name'},
-                            hover_data={'fips': False, 'CTYNAME': True}
-                            )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-
 # function for plot #3 (visitors as percent of county population)
 def plot_discrete_map(column_color, color_list, legend_list, rename_label_1):
     map_name = px.choropleth(data_frame=final_df,
@@ -94,6 +76,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1):
     map_name.update_geos(fitbounds="locations", visible=False)
     map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
     map_name.show()
+
 
 # make plot #3 from above function
 final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
