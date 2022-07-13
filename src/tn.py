@@ -2,7 +2,6 @@ import plotly.express as px
 import requests
 import json
 import pandas as pd
-import math
 import numpy as np
 
 
@@ -43,7 +42,7 @@ fig_total_percent = px.choropleth(data_frame=final_df,
                                   labels={'fips': 'County FIPS code', 'percent_attendance_total': 'Attendance from county as percent of total ASC attendance'},
                                   color_continuous_scale='Viridis',
                                   range_color=(0, 12),
-                                  scope='usa',
+                                  scope='world',
                                   )
 fig_total_percent.update_geos(fitbounds="locations", visible=False)
 fig_total_percent.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
@@ -55,39 +54,62 @@ fig_cty_percent = px.choropleth(data_frame=final_df,
                                 color='percent_attendance_cty',
                                 color_continuous_scale='Blues',
                                 range_color=(0, 12),
-                                scope='usa'
+                                scope='world'
                                 )
 fig_cty_percent.update_geos(fitbounds="locations", visible=False)
 fig_cty_percent.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
 fig_cty_percent.show()
 
 
-def plot_map(map_name, column_color):
+def plot_map(map_name, column_color, data_type, legend_color, color_list, legend_list, rename_label_1):
     map_name = px.choropleth(data_frame=final_df,
                              locations='fips',
                              geojson=counties,
                              color=column_color,
-                             color_continuous_scale='Blues',
-                             range_color=(0, 12),
-                             scope='usa')
+                             if data_type == 'continuous':
+                                 color_continuous_scale='legend_color'
+                             elif data_type == 'discrete':
+                                 color_discrete_sequence='color_list'
+                                 category_orders={'column_color': 'legend_list'}
+                            scope='world',
+                            labels={'column_color': 'rename_label_1', 'CTYNAME': 'County name'},
+                            hover_data={'fips': False, 'CTYNAME': True}
+                            )
     map_name.update_geos(fitbounds="locations", visible=False)
     map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
     map_name.show()
 
+# function for plot #3 (visitors as percent of county population)
+def plot_discrete_map(column_color, color_list, legend_list, rename_label_1):
+    map_name = px.choropleth(data_frame=final_df,
+                             locations='fips',
+                             geojson=counties,
+                             color=column_color,
+                             color_discrete_sequence=color_list,
+                             category_orders={column_color: legend_list},
+                             scope='world',
+                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
+                             hover_data={'fips': False, 'CTYNAME': True}
+                            )
+    map_name.update_geos(fitbounds="locations", visible=False)
+    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
+    map_name.show()
 
-plot_map('fig_cty_percent', 'percent_attendance_cty')
+# make plot #3 from above function
+final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population')
 
 # visitors as percent of county population
-final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
+final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str) # include in function?
 fig_cty_percent_discrete = px.choropleth(data_frame=final_df,
                                          locations='fips',
                                          geojson=counties,
                                          color='percent_attendance_cty_rounded',
-                                         color_discrete_sequence=['#f4f4f4', '#d4d4d4', '#b5b5b5', '#969696', '#797979', '#5d5d5d', '#424242', '#292929', '#121212'],
+                                         color_discrete_sequence=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'],
                                          # color_discrete_sequence=px.colors.qualitative.Dark2,
                                          category_orders={'percent_attendance_cty_rounded': ['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0']},
                                          # range_color=(0, 12),
-                                         scope='usa',
+                                         scope='world',
                                          labels={'percent_attendance_cty_rounded': 'Visitors as a percent of county population', 'CTYNAME': 'County name'},
                                          hover_data={'fips': False, 'CTYNAME': True}
                                          )
@@ -104,7 +126,7 @@ fig_total_percent_discrete = px.choropleth(data_frame=final_df,
                                            color_discrete_sequence=['#f4f4f4', '#d4d4d4', '#b5b5b5', '#969696', '#797979', '#5d5d5d', '#424242', '#292929', '#121212'],
                                            # color_discrete_sequence=px.colors.qualitative.Dark2,
                                            category_orders={'percent_attendance_total_rounded': ['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '13.0', '47.0']},
-                                           scope='usa',
+                                           scope='world',
                                            labels={'percent_attendance_total_rounded': 'Visitors as a percent of total attendance', 'CTYNAME': 'County name'},
                                            hover_data={'fips': False, 'CTYNAME': True}
                                            )
@@ -112,9 +134,7 @@ fig_total_percent_discrete.update_geos(fitbounds="locations", visible=False)
 fig_total_percent_discrete.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
 fig_total_percent_discrete.show()
 
-# raw attendance
-# final_df['attendance'] = final_df['attendance'].astype(str)
-final_df["attendance"] = pd.to_numeric(final_df["attendance"])
+# raw attendance (plot #1)
 fig_attendance = px.choropleth(
                                 data_frame=final_df,
                                 locations='fips',
@@ -124,7 +144,7 @@ fig_attendance = px.choropleth(
                                 # range_color=(0, 25000),
                                 # color_discrete_sequence=px.colors.qualitative.Dark2,
                                 # category_orders={'attendance': ['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '13.0', '47.0']},
-                                scope='usa',
+                                scope='world',
                                 labels={'attendance': 'Raw attendance', 'CTYNAME': 'County name'},
                                 hover_data={'fips': False, 'CTYNAME': True}
                                 )
