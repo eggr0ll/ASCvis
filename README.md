@@ -13,7 +13,7 @@ For the county coordinates & other info, I used the `.json` file from plotly's c
 - [ ] SH - will send data from other ASC by Friday 7/15
 - [ ] SH - wants #1 and #3 plots
 - [ ] L - make above plots for each ASC and combined
-- [ ] L - use blue or red color scheme; straighten out state
+- [X] L - use blue or red color scheme; straighten out state
 - [ ] L - eventually make online map filterable by site
 - [ ] L - use range for legends on plot #3
 
