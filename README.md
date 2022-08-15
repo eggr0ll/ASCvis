@@ -23,4 +23,10 @@ For the county coordinates & other info, I used the `.json` file from plotly's c
 
 Sites: Nashville, Murfreesboro, Chattanooga, Memphis, Knoxville, Johnson City
 
+## Dependencies
 
+For writing images to disk, Plotly needs the Kaleido package. Note that at the time of writing, a bug exists in version 0.2.1 that causes a python kernel hang, so install an earlier version:
+```
+pip install kaleido==0.1.0.post1
+```
+which is `kaleido-0.1.0.post1-py2.py3-none-win_amd64.whl`
