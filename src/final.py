@@ -3,29 +3,84 @@ import requests
 import json
 import pandas as pd
 import numpy as np
-import os
 
 #
 # Functions
 #
-def hex_to_RGB(hex_str):
-    """ #FFFFFF -> [255,255,255]"""
-    #Pass 16 to the integer function for change of base
+def hex_to_rgb(hex_str):
+    """
+    #FFFFFF -> [255,255,255]
+    Pass 16 to the integer function for change of base
+    """
     return [int(hex_str[i:i+2], 16) for i in range(1,6,2)]
 
 
 def get_color_gradient(c1, c2, n):
     """
-    Given two hex colors, returns a color gradient
-    with n colors.
+    Given two hex colors, returns a color gradient with n colors
     """
     assert n > 1
-    c1_rgb = np.array(hex_to_RGB(c1))/255
-    c2_rgb = np.array(hex_to_RGB(c2))/255
+    c1_rgb = np.array(hex_to_rgb(c1))/255
+    c2_rgb = np.array(hex_to_rgb(c2))/255
     mix_pcts = [x/(n-1) for x in range(n)]
     rgb_colors = [((1-mix)*c1_rgb + (mix*c2_rgb)) for mix in mix_pcts]
     return ["#" + "".join([format(int(round(val*255)), "02x") for val in item]) for item in rgb_colors]
 
+
+# plot - raw attendance
+def plot_continuous_map(data, column_color, legend_color, rename_label_1, filename):
+    """
+    Generate a plot for raw attendance
+    :param data:
+    :param column_color:
+    :param legend_color:
+    :param rename_label_1:
+    :param filename:
+    :return:
+    """
+    map_name = px.choropleth(data_frame=data,
+                             locations='fips',
+                             geojson=counties,
+                             color=column_color,
+                             color_continuous_scale=legend_color,
+                             scope='world',
+                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
+                             hover_data={'fips': False, 'CTYNAME': True}
+                             )
+    map_name.update_geos(fitbounds="locations", visible=False)
+    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
+    map_name.show()
+    map_name.write_image("results/" + filename + ".png", scale=6)
+    map_name.write_image("results/" + filename + ".svg")
+
+
+# plot -
+def plot_discrete_map(data, column_color, color_list, legend_list, rename_label_1, filename):
+    """
+    Generate a plot for visitors as percent of county population, i.e. normalized
+    :param data:
+    :param column_color:
+    :param color_list:
+    :param legend_list:
+    :param rename_label_1:
+    :param filename:
+    :return:
+    """
+    map_name = px.choropleth(data_frame=data,
+                             locations='fips',
+                             geojson=counties,
+                             color=column_color,
+                             color_discrete_sequence=color_list,
+                             category_orders={column_color: legend_list},
+                             scope='world',
+                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
+                             hover_data={'fips': False, 'CTYNAME': True}
+                             )
+    map_name.update_geos(fitbounds="locations", visible=False)
+    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
+    map_name.show()
+    map_name.write_image("results/" + filename + ".png", scale=6)
+    map_name.write_image("results/" + filename + ".svg")
 
 #
 # Set up colors
@@ -44,7 +99,6 @@ colorscale_blues = [
     [0.8, '#2cadb9'],
     [1, '#0199a7']
 ]
-
 
 #
 # Data setup
@@ -86,6 +140,8 @@ final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_ro
 # add another new column that rounds up to whole number
 final_df['percent_attendance_total_rounded'] = final_df['percent_attendance_total']
 final_df['percent_attendance_total_rounded'] = final_df['percent_attendance_total_rounded'].apply(np.ceil)
+# convert percent_attendance_cty_rounded from int type to str type to use discrete colors
+final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
 
 # clean up MoSH/Memphis df
 # replace "nan" attendance values with 0
@@ -136,327 +192,45 @@ combined_total_df['percent_attendance_cty_rounded'] = combined_total_df['percent
 # convert percent_attendance_cty_rounded from int type to str type to use discrete colors
 combined_total_df['percent_attendance_cty_rounded'] = combined_total_df['percent_attendance_cty_rounded'].astype(str)
 
+#
+# Nashville
+#
+plot_continuous_map(data=final_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='nashville_attendance_raw')
+plot_discrete_map(data=final_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
 
-# following is for ASC/Nashville
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=final_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
+#
+# MoSH/Memphis
+#
+plot_continuous_map(data=memp_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='memphis_attendance_raw')
+plot_discrete_map(data=memp_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '9.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='memphis_attendance_percent_county')
 
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='nashville_attendance_raw')
+#
+# Chattanooga
+#
+plot_continuous_map(data=chatt_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='chattanooga_attendance_raw')
+plot_discrete_map(data=chatt_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 12), legend_list=['1.0', '2.0', '3.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '16.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='chattanooga_attendance_percent_county')
 
+#
+# Muse/Knoxville
+#
+plot_continuous_map(data=knox_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='knoxville_attendance_raw')
+plot_discrete_map(data=knox_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '6.0', '7.0', '14.0', '19.0'], rename_label_1='Visitors as a percent of county population', filename='knoxville_attendance_percent_county')
 
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=final_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    #map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
+#
+# HODC/Johnson City
+#
+plot_continuous_map(data=john_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='johnsoncity_attendance_raw')
+plot_discrete_map(data=john_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '5.0', '6.0', '11.0', '13.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='johnsoncity_attendance_percent_county')
 
-# make plot #3 from above function
-# convert percent_attendance_cty_rounded from int type to str type to use discrete colors
-final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
-#plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
+#
+#  DCMS/Murfreesboro
+#
+plot_continuous_map(data=murf_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='murfreesboro_attendance_raw')
+plot_discrete_map(data=murf_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 7), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '7.0', '13.0'], rename_label_1='Visitors as a percent of county population', filename='murfreesboro_attendance_percent_county')
 
 
-# following is for MoSH/Memphis
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=memp_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='memphis_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=memp_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-# convert percent_attendance_cty_rounded from int type to str type to use discrete colors
-memp_df['percent_attendance_cty_rounded'] = memp_df['percent_attendance_cty_rounded'].astype(str)
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '9.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='memphis_attendance_percent_county')
-
-
-# following is for CDM/Chattanooga
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=chatt_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='chattanooga_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=chatt_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 12), legend_list=['1.0', '2.0', '3.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '16.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='chattanooga_attendance_percent_county')
-
-
-# following is for Muse/Knoxville
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=knox_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='knoxville_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=knox_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '6.0', '7.0', '14.0', '19.0'], rename_label_1='Visitors as a percent of county population', filename='knoxville_attendance_percent_county')
-
-
-# following is for HODC/Johnson City
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=john_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='johnsoncity_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=john_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '5.0', '6.0', '11.0', '13.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='johnsoncity_attendance_percent_county')
-
-
-# following is for DCMS/Murfreesboro
-# function for plot #1 (raw attendance)
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=murf_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='murfreesboro_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=murf_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 7), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '7.0', '13.0'], rename_label_1='Visitors as a percent of county population', filename='murfreesboro_attendance_percent_county')
-
-
-# following is for combined centers data
-def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=combined_total_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_continuous_scale=legend_color,
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='combined_attendance_raw')
-
-
-# function for plot #3 (visitors as percent of county population)
-def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
-    map_name = px.choropleth(data_frame=combined_total_df,
-                             locations='fips',
-                             geojson=counties,
-                             color=column_color,
-                             color_discrete_sequence=color_list,
-                             category_orders={column_color: legend_list},
-                             scope='world',
-                             labels={column_color: rename_label_1, 'CTYNAME': 'County name'},
-                             hover_data={'fips': False, 'CTYNAME': True}
-                             )
-    map_name.update_geos(fitbounds="locations", visible=False)
-    map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
-    map_name.write_image("results/" + filename + ".png", scale=6)
-    map_name.write_image("results/" + filename + ".svg")
-
-
-# make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 20), legend_list=['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '21.0', '22.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='combined_attendance_percent_county')
-
+#
+# Combined centers data
+#
+plot_continuous_map(data=combined_total_df, column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='combined_attendance_raw')
+plot_discrete_map(data=combined_total_df, column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 20), legend_list=['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '21.0', '22.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='combined_attendance_percent_county')
