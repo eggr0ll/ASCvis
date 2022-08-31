@@ -3,7 +3,52 @@ import requests
 import json
 import pandas as pd
 import numpy as np
+import os
 
+#
+# Functions
+#
+def hex_to_RGB(hex_str):
+    """ #FFFFFF -> [255,255,255]"""
+    #Pass 16 to the integer function for change of base
+    return [int(hex_str[i:i+2], 16) for i in range(1,6,2)]
+
+
+def get_color_gradient(c1, c2, n):
+    """
+    Given two hex colors, returns a color gradient
+    with n colors.
+    """
+    assert n > 1
+    c1_rgb = np.array(hex_to_RGB(c1))/255
+    c2_rgb = np.array(hex_to_RGB(c2))/255
+    mix_pcts = [x/(n-1) for x in range(n)]
+    rgb_colors = [((1-mix)*c1_rgb + (mix*c2_rgb)) for mix in mix_pcts]
+    return ["#" + "".join([format(int(round(val*255)), "02x") for val in item]) for item in rgb_colors]
+
+
+#
+# Set up colors
+#
+# AdvSciCtr branding has #00acbb  but let's do a little darker with #0199A7
+#
+# get_color_gradient('#dafcff', '#00acbb', 6)
+# get_color_gradient('#dafcff', '#0199A7', 6)
+#  ['#dafcff', '#aeecf1', '#83dce4', '#57ccd6', '#2cbcc9', '#00acbb'] == native
+# ['#dafcff', '#afe8ed', '#83d4dc', '#58c1ca', '#2cadb9', '#0199a7'] == darker
+colorscale_blues = [
+    [0, '#dafcff'],
+    [0.1, '#afe8ed'],
+    [0.2, '#83d4dc'],
+    [0.4, '#58c1ca'],
+    [0.8, '#2cadb9'],
+    [1, '#0199a7']
+]
+
+
+#
+# Data setup
+#
 r = requests.get('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
 counties = json.loads(r.text)
 target_states = ['47']
@@ -110,9 +155,9 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
     map_name.write_image("results/" + filename + ".png", scale=6)
     map_name.write_image("results/" + filename + ".svg")
 
-
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='nashville_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='nashville_attendance_raw')
+
 
 # function for plot #3 (visitors as percent of county population)
 def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, filename):
@@ -128,15 +173,15 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
                              )
     map_name.update_geos(fitbounds="locations", visible=False)
     map_name.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0})
-    map_name.show()
+    #map_name.show()
     map_name.write_image("results/" + filename + ".png", scale=6)
     map_name.write_image("results/" + filename + ".svg")
-
 
 # make plot #3 from above function
 # convert percent_attendance_cty_rounded from int type to str type to use discrete colors
 final_df['percent_attendance_cty_rounded'] = final_df['percent_attendance_cty_rounded'].astype(str)
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
+#plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0'], rename_label_1='Visitors as a percent of county population', filename='nashville_attendance_percent_county')
 
 
 # following is for MoSH/Memphis
@@ -159,7 +204,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='memphis_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='memphis_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -184,7 +229,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 # make plot #3 from above function
 # convert percent_attendance_cty_rounded from int type to str type to use discrete colors
 memp_df['percent_attendance_cty_rounded'] = memp_df['percent_attendance_cty_rounded'].astype(str)
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '9.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='memphis_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '6.0', '7.0', '9.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='memphis_attendance_percent_county')
 
 
 # following is for CDM/Chattanooga
@@ -207,7 +252,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='chattanooga_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='chattanooga_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -230,7 +275,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 
 
 # make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e9eaf1', '#d4d5e3', '#bfc1d5', '#aaadc7', '#9599ba', '#8186ac', '#6c749f', '#576292', '#425085', '#2a4078', '#08306b'], legend_list=['1.0', '2.0', '3.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '16.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='chattanooga_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 12), legend_list=['1.0', '2.0', '3.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '16.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='chattanooga_attendance_percent_county')
 
 
 # following is for Muse/Knoxville
@@ -253,7 +298,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='knoxville_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='knoxville_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -276,7 +321,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 
 
 # make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '6.0', '7.0', '14.0', '19.0'], rename_label_1='Visitors as a percent of county population', filename='knoxville_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '6.0', '7.0', '14.0', '19.0'], rename_label_1='Visitors as a percent of county population', filename='knoxville_attendance_percent_county')
 
 
 # following is for HODC/Johnson City
@@ -299,7 +344,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='johnsoncity_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='johnsoncity_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -322,7 +367,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 
 
 # make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#e1e2ec', '#c4c6d9', '#a7aac6', '#8b90b3', '#6f76a1', '#525d8f', '#34467d', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '5.0', '6.0', '11.0', '13.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='johnsoncity_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 9), legend_list=['0.0', '1.0', '2.0', '3.0', '5.0', '6.0', '11.0', '13.0', '21.0'], rename_label_1='Visitors as a percent of county population', filename='johnsoncity_attendance_percent_county')
 
 
 # following is for DCMS/Murfreesboro
@@ -345,7 +390,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='murfreesboro_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='murfreesboro_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -368,7 +413,7 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 
 
 # make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#d8d9e5', '#b1b4cc', '#8b90b3', '#656e9b', '#3e4e83', '#08306b'], legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '7.0', '13.0'], rename_label_1='Visitors as a percent of county population', filename='murfreesboro_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 7), legend_list=['0.0', '1.0', '2.0', '3.0', '4.0', '7.0', '13.0'], rename_label_1='Visitors as a percent of county population', filename='murfreesboro_attendance_percent_county')
 
 
 # following is for combined centers data
@@ -390,7 +435,7 @@ def plot_continuous_map(column_color, legend_color, rename_label_1, filename):
 
 
 # make plot #1 from above function
-plot_continuous_map(column_color='attendance', legend_color='Blues', rename_label_1='Raw attendance', filename='combined_attendance_raw')
+plot_continuous_map(column_color='attendance', legend_color=colorscale_blues, rename_label_1='Raw attendance', filename='combined_attendance_raw')
 
 
 # function for plot #3 (visitors as percent of county population)
@@ -413,5 +458,5 @@ def plot_discrete_map(column_color, color_list, legend_list, rename_label_1, fil
 
 
 # make plot #3 from above function
-plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=['#ffffff', '#f2f3f7', '#e6e7ef', '#dadbe7', '#cdcfdf', '#c1c3d7', '#b5b7cf', '#a9acc7', '#9da1bf', '#9195b7', '#858aaf', '#7980a8', '#6d75a0', '#616a98', '#556090', '#495689', '#3c4c81', '#2e427a', '#1f3972', '#08306b'], legend_list=['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '21.0', '22.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='combined_attendance_percent_county')
+plot_discrete_map(column_color='percent_attendance_cty_rounded', color_list=get_color_gradient('#dafcff', '#0199A7', 20), legend_list=['1.0', '2.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '21.0', '22.0', '29.0'], rename_label_1='Visitors as a percent of county population', filename='combined_attendance_percent_county')
 
