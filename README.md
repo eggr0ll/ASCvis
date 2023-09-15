@@ -18,8 +18,8 @@ For the county coordinates & other info, I used the `.json` file from plotly's c
 - [x] SH - wants #1 and #3 plots
 - [x] L - make above plots for each ASC and combined
 - [X] L - use blue or red color scheme; straighten out state
-- [ ] L - eventually make online map filterable by site
-- [ ] L - use range for legends on plot #3
+- [X] L - eventually make online map filterable by site
+- [X] L - use range for legends on plot #3
 
 Sites: Nashville, Murfreesboro, Chattanooga, Memphis, Knoxville, Johnson City
 
